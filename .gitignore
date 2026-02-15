@@ -1,0 +1,24 @@
+@"
+# ===== raw data (DO NOT COMMIT) =====
+data/raw/
+*.gdb/
+*.zip
+*.csv
+*.parquet
+*.tif
+
+# If you still keep old folders locally
+footprint/
+noise_complaint_data/
+nyc_mappluto_25v4_unclipped_fgdb/
+
+# ===== python/jupyter =====
+__pycache__/
+.ipynb_checkpoints/
+.venv/
+.env
+
+# ===== system =====
+.DS_Store
+Thumbs.db
+"@ | Out-File -Encoding utf8 .gitignore

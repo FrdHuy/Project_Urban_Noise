@@ -1,0 +1,10 @@
+@"
+geopandas
+pandas
+numpy
+matplotlib
+fiona
+shapely
+pyproj
+pyyaml
+"@ | Out-File -Encoding utf8 requirements.txt

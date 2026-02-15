@@ -1,0 +1,15 @@
+  @"
+paths:
+  mappluto_gdb: "data/raw/MapPLUTO25v4_unclipped.gdb"
+  mappluto_layer: "MapPLUTO_25v4_unclipped"
+  bldg_3d_metrics_csv: "data/raw/bldg_3d_metrics.csv"
+  building_csv: "data/raw/BUILDING_20260209.csv"
+  centerline_csv: "data/raw/Centerline_20260209.csv"
+
+  outputs:
+    blocks_geojson: "data/processed/blocks.geojson"
+    features_geojson: "data/processed/block_features.geojson"
+    features_csv: "data/processed/block_features.csv"
+    fig_density: "figures/heatmap_building_density.png"
+    fig_height_std: "figures/heatmap_height_heterogeneity.png"
+    "@ | Out-File -Encoding utf8 config.example.yaml
