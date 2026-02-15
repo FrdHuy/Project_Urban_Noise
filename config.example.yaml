@@ -1,4 +1,3 @@
-  @"
 paths:
   mappluto_gdb: "data/raw/MapPLUTO25v4_unclipped.gdb"
   mappluto_layer: "MapPLUTO_25v4_unclipped"
@@ -12,4 +11,3 @@ paths:
     features_csv: "data/processed/block_features.csv"
     fig_density: "figures/heatmap_building_density.png"
     fig_height_std: "figures/heatmap_height_heterogeneity.png"
-    "@ | Out-File -Encoding utf8 config.example.yaml
