@@ -6,5 +6,3 @@ fiona
 shapely
 pyproj
 pyyaml
-
-mapclassify
