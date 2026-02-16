@@ -1,4 +1,3 @@
-@"
 # Project_Urban_Noise
 
 Compute NYC **block-level** urban form features from MapPLUTO + building footprint/3D metrics.
@@ -18,8 +17,7 @@ Put these under `data/raw/`:
 - `figures/heatmap_height_heterogeneity.png`
 
 ## Run
-1) Copy `config.example.yaml` to `config.yaml` and edit paths if needed
-2) `python -m src.build_blocks --config config.yaml`
-3) `python -m src.compute_block_features --config config.yaml`
-4) `python -m src.plot_heatmaps --config config.yaml`
-   "@ | Out-File -Encoding utf8 README.md
+1. Copy `config.example.yaml` to `config.yaml` and edit paths if needed.
+2. `python -m src.build_blocks --config config.yaml`
+3. `python -m src.compute_block_features --config config.yaml`
+4. `python -m src.plot_heatmaps --config config.yaml`
