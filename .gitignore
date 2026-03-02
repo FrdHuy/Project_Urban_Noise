@@ -1,4 +1,3 @@
-@"
 # ===== raw data (DO NOT COMMIT) =====
 data/raw/
 *.gdb/
@@ -21,4 +20,3 @@ __pycache__/
 # ===== system =====
 .DS_Store
 Thumbs.db
-"@ | Out-File -Encoding utf8 .gitignore
