@@ -1,12 +1,12 @@
 # ===== raw data (DO NOT COMMIT) =====
+.idea/
 data/raw/
+data
 *.gdb/
 *.zip
 *.csv
 *.parquet
 *.tif
-data/
-.idea/
 
 # If you still keep old folders locally
 footprint/
