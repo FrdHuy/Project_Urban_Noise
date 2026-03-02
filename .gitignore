@@ -1,5 +1,7 @@
 # ===== raw data (DO NOT COMMIT) =====
+.idea/
 data/raw/
+data
 *.gdb/
 *.zip
 *.csv
@@ -20,5 +22,3 @@ __pycache__/
 # ===== system =====
 .DS_Store
 Thumbs.db
-
-.idea/

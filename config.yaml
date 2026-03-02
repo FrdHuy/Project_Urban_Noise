@@ -1,0 +1,19 @@
+paths:
+  mappluto_gdb: "data/raw/MapPLUTO25v4_unclipped.gdb"
+  mappluto_layer: "MapPLUTO_25v4_unclipped"
+  bldg_3d_metrics_csv: "data/raw/bldg_3d_metrics.csv"
+  building_csv: "data/raw/BUILDING_20260209.csv"
+  centerline_csv: "data/raw/Centerline_20260209.csv"
+  traffic_csv: "data/raw/Automated_Traffic_Volume_Counts_20260209.csv"
+  activity_csv: "data/raw/Active_Cabaret_and_Catering_Licenses_20260209.csv"
+  y_total_csv: "data/raw/noise_complaints.csv"
+  street_activity_path: "data/raw/Active_Cabaret_and_Catering_Licenses_20260209.csv"
+
+  outputs:
+    blocks_geojson: "data/processed/blocks.geojson"
+    features_geojson: "data/processed/block_features.geojson"
+    features_csv: "data/processed/block_features.csv"
+    fig_density: "figures/heatmap_building_density.png"
+    fig_height_std: "figures/heatmap_height_heterogeneity.png"
+    exposure_weekly_csv: "data/processed/exposure_weekly.csv"
+    nsi_input_weekly_csv: "data/processed/nsi_input_weekly.csv"
