@@ -1,8 +1,6 @@
-<<<<<<< HEAD
 # Project_Urban_Noise
-=======
+
 # Project_Urban_Noise (SYSEN 5900)
->>>>>>> 91b55fe92d8efa39d1a935ed5b9c13972cdc6822
 
 ## 中文说明（给组员与组长）
 
@@ -36,13 +34,12 @@
 - `figures/heatmap_building_density_quantiles_red.png`
 - `figures/heatmap_height_heterogeneity_quantiles_red.png`
 
-<<<<<<< HEAD
 ## Run
 1. Copy `config.example.yaml` to `config.yaml` and edit paths if needed.
 2. `python -m src.build_blocks --config config.yaml`
 3. `python -m src.compute_block_features --config config.yaml`
 4. `python -m src.plot_heatmaps --config config.yaml`
-=======
+
 ### 4) 指标定义（block 级）
 设 block 面积为 `block_area_ft2`，并由 parcel 聚合得到 `bldgarea_sum`（总建筑面积 proxy）与 `numfloors_mean`。
 
@@ -261,4 +258,3 @@ This week adds a **new dynamic alignment layer** at `bgrp_id × week_start` for 
 - Traffic: if direct bgrp alignment is unavailable, the script applies key/proxy fallback and logs warnings.
 - Street activity: Active Cabaret/Catering licenses are treated as a static proxy and replicated weekly.
 - Construction: DOB permits are weekly if date fields exist; otherwise a documented fallback is used and logged.
->>>>>>> 91b55fe92d8efa39d1a935ed5b9c13972cdc6822
