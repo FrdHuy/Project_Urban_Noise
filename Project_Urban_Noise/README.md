@@ -1,5 +1,3 @@
-# Project_Urban_Noise
-
 # Project_Urban_Noise (SYSEN 5900)
 
 ## 中文说明（给组员与组长）
@@ -33,12 +31,6 @@
 - `data/processed/block_features.csv`
 - `figures/heatmap_building_density_quantiles_red.png`
 - `figures/heatmap_height_heterogeneity_quantiles_red.png`
-
-## Run
-1. Copy `config.example.yaml` to `config.yaml` and edit paths if needed.
-2. `python -m src.build_blocks --config config.yaml`
-3. `python -m src.compute_block_features --config config.yaml`
-4. `python -m src.plot_heatmaps --config config.yaml`
 
 ### 4) 指标定义（block 级）
 设 block 面积为 `block_area_ft2`，并由 parcel 聚合得到 `bldgarea_sum`（总建筑面积 proxy）与 `numfloors_mean`。
@@ -100,6 +92,15 @@ python -m src.plot_heatmaps --config config.yaml
 
 `block_id` 规则：
 - `block_id = Borough + "_" + Block`（示例：`MN_123`）
+
+
+
+### Week X – Dynamic Feature Alignment（本周新增）
+- 新增脚本：
+  - `python -m src.compute_dynamic_features --config config.yaml` → `data/processed/exposure_weekly.csv`
+  - `python -m src.build_nsi_input --config config.yaml` → `data/processed/nsi_input_weekly.csv`
+- 动态特征按 `bgrp_id × week_start`（周一）对齐，缺失 exposure 在 merge 后填 0，并校验键唯一性。
+- 本周不改动上周 block-level 产线逻辑，仅新增动态对齐模块。
 
 ### 9) Troubleshooting
 - **依赖安装失败**  
