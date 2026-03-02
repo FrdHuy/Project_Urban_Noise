@@ -6,13 +6,14 @@ from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
+from shapely import wkt
 
 from .common import TARGET_EPSG, ensure_parent_dir, find_column, load_config, setup_logging
 
 LOGGER = logging.getLogger(__name__)
 
 DEFAULT_TRAFFIC_PATH = "data/raw/Centerline_20260209.csv"
-DEFAULT_ACTIVITY_PATH = "data/raw/Active_Cabaret_and_Catering_Licenses.csv"
+DEFAULT_ACTIVITY_PATH = "data/raw/Active_Cabaret_and_Catering_Licenses_20260209.csv"
 DEFAULT_PERMITS_PATH = "data/raw/BUILDING_20260209.csv"
 DEFAULT_OUTPUT = "data/processed/exposure_weekly.csv"
 
@@ -62,6 +63,38 @@ def _parse_week(df: pd.DataFrame, candidates: list[str], source_name: str) -> pd
     return _to_monday_week(df[date_col])
 
 
+def _parse_wkt_geometries(series: pd.Series) -> gpd.GeoSeries:
+    return gpd.GeoSeries(series.map(lambda value: wkt.loads(value) if pd.notna(value) else None), crs=f"EPSG:{TARGET_EPSG}")
+
+
+def _join_points_to_blocks(
+    points: gpd.GeoDataFrame,
+    bgrps: gpd.GeoDataFrame,
+    max_distance: float = 150.0,
+) -> pd.DataFrame:
+    work = points.reset_index(drop=True).copy()
+    work["_geom_key"] = work.geometry.to_wkb(hex=True)
+    unique_points = work[["_geom_key", "geometry"]].drop_duplicates("_geom_key").reset_index(drop=True)
+    unique_points = gpd.GeoDataFrame(unique_points, geometry="geometry", crs=work.crs)
+
+    within = gpd.sjoin(unique_points, bgrps[["bgrp_id", "geometry"]], how="left", predicate="within")
+    matched = within[within["bgrp_id"].notna()][["_geom_key", "bgrp_id"]].copy()
+
+    unmatched = within.loc[within["bgrp_id"].isna(), ["_geom_key", "geometry"]].copy()
+    if not unmatched.empty:
+        nearest = gpd.sjoin_nearest(
+            gpd.GeoDataFrame(unmatched, geometry="geometry", crs=work.crs),
+            bgrps[["bgrp_id", "geometry"]],
+            how="left",
+            max_distance=max_distance,
+            distance_col="_join_dist",
+        )
+        nearest = nearest[nearest["bgrp_id"].notna()][["_geom_key", "bgrp_id"]].copy()
+        matched = pd.concat([matched, nearest], ignore_index=True, sort=False)
+
+    return pd.DataFrame(work.merge(matched.drop_duplicates("_geom_key"), on="_geom_key", how="left").drop(columns=["_geom_key"]))
+
+
 def _traffic_spatial_join(df: pd.DataFrame, bgrps: gpd.GeoDataFrame) -> pd.DataFrame | None:
     lon_col = find_column(df.columns, ["longitude", "lon", "x", "xcoord", "x_coord"])
     lat_col = find_column(df.columns, ["latitude", "lat", "y", "ycoord", "y_coord"])
@@ -79,8 +112,7 @@ def _traffic_spatial_join(df: pd.DataFrame, bgrps: gpd.GeoDataFrame) -> pd.DataF
     gpts = gpd.GeoDataFrame(work, geometry=gpd.points_from_xy(work[lon_col], work[lat_col]), crs="EPSG:4326").to_crs(
         bgrps.crs
     )
-    joined = gpd.sjoin(gpts, bgrps[["bgrp_id", "geometry"]], how="left", predicate="within")
-    return pd.DataFrame(joined.drop(columns=["geometry", "index_right"], errors="ignore"))
+    return _join_points_to_blocks(gpts, bgrps)
 
 
 def _load_traffic(path: str, bgrps: gpd.GeoDataFrame) -> pd.DataFrame:
@@ -89,12 +121,31 @@ def _load_traffic(path: str, bgrps: gpd.GeoDataFrame) -> pd.DataFrame:
         return pd.DataFrame(columns=["bgrp_id", "week_start", "traffic"])
 
     df = pd.read_csv(path, low_memory=False)
-    df["week_start"] = _parse_week(df, ["date", "timestamp", "sample_date", "obs_date"], "Traffic")
+    if {"Yr", "M", "D"}.issubset(df.columns):
+        traffic_dates = pd.to_datetime(df[["Yr", "M", "D"]].rename(columns={"Yr": "year", "M": "month", "D": "day"}), errors="coerce")
+        df["week_start"] = _to_monday_week(traffic_dates)
+    else:
+        df["week_start"] = _parse_week(df, ["date", "timestamp", "sample_date", "obs_date"], "Traffic")
 
-    value_col = find_column(df.columns, ["traffic", "volume", "count", "aadt", "segment_count"])
+    value_col = find_column(df.columns, ["vol", "traffic", "volume", "count", "aadt", "segment_count"])
     df["traffic_value"] = pd.to_numeric(df[value_col], errors="coerce").fillna(0.0) if value_col else 1.0
     if value_col is None:
         LOGGER.warning("Traffic intensity column missing; using event-count proxy")
+
+    wkt_col = find_column(df.columns, ["WktGeom", "wktgeom", "the_geom", "geometry", "wkt"])
+    if wkt_col:
+        work = df.dropna(subset=["week_start"]).copy()
+        work["geometry"] = _parse_wkt_geometries(work[wkt_col])
+        work = work.dropna(subset=["geometry"])
+        if not work.empty:
+            traffic_gdf = gpd.GeoDataFrame(work, geometry="geometry", crs=f"EPSG:{TARGET_EPSG}")
+            joined = _join_points_to_blocks(traffic_gdf, bgrps)
+            if not joined.empty:
+                LOGGER.info("Traffic spatial join succeeded")
+                return (
+                    joined.groupby(["bgrp_id", "week_start"], as_index=False)
+                    .agg(traffic=("traffic_value", "sum"))
+                )
 
     bgrp_col = find_column(df.columns, ["bgrp_id", "bgrp", "geoid", "borocb2020"])
     if bgrp_col:
@@ -110,6 +161,7 @@ def _load_traffic(path: str, bgrps: gpd.GeoDataFrame) -> pd.DataFrame:
 
     spatial_tmp = _traffic_spatial_join(df, bgrps)
     if spatial_tmp is not None:
+        LOGGER.info("Traffic spatial join succeeded")
         return spatial_tmp.groupby(["bgrp_id", "week_start"], as_index=False).agg(traffic=("traffic_value", "sum"))
 
     LOGGER.warning("Traffic alignment failed; using uniform weekly proxy distribution")
@@ -130,15 +182,62 @@ def _load_activity(path: str, bgrps: gpd.GeoDataFrame, weeks: list[str]) -> pd.D
     val_col = find_column(df.columns, ["count", "licenses", "active", "license_count"])
     df["street_activity_value"] = pd.to_numeric(df[val_col], errors="coerce").fillna(0.0) if val_col else 1.0
 
+    allocation_method = "uniform"
+    lon_col = find_column(df.columns, ["longitude", "lon", "x", "xcoord", "x_coord"])
+    lat_col = find_column(df.columns, ["latitude", "lat", "y", "ycoord", "y_coord"])
     bgrp_col = find_column(df.columns, ["bgrp_id", "bgrp", "geoid", "borocb2020"])
-    if bgrp_col:
+    if lon_col and lat_col:
+        work = df.copy()
+        work[lon_col] = pd.to_numeric(work[lon_col], errors="coerce")
+        work[lat_col] = pd.to_numeric(work[lat_col], errors="coerce")
+        work = work.dropna(subset=[lon_col, lat_col])
+        if not work.empty:
+            activity_gdf = gpd.GeoDataFrame(
+                work,
+                geometry=gpd.points_from_xy(work[lon_col], work[lat_col]),
+                crs="EPSG:4326",
+            ).to_crs(epsg=TARGET_EPSG)
+            activity_gdf = activity_gdf.set_crs(epsg=TARGET_EPSG, allow_override=True)
+            joined = _join_points_to_blocks(activity_gdf, bgrps)
+            if not joined.empty:
+                static = joined.groupby("bgrp_id", as_index=False).agg(street_activity=("street_activity_value", "sum"))
+                allocation_method = "spatial"
+            else:
+                static = None
+        else:
+            static = None
+    elif bgrp_col:
         static = df.rename(columns={bgrp_col: "bgrp_id"}).groupby("bgrp_id", as_index=False).agg(
             street_activity=("street_activity_value", "sum")
         )
+        allocation_method = "bgrp_id"
     else:
-        LOGGER.warning("Street activity static source has no bgrp_id; using uniform density fallback")
-        static = bgrps[["bgrp_id"]].drop_duplicates().copy()
-        static["street_activity"] = df["street_activity_value"].sum() / max(len(static), 1)
+        static = None
+
+    if static is None:
+        borough_col = find_column(df.columns, ["borough", "boro"])
+        bgrp_borough_col = find_column(bgrps.columns, ["borough", "boro", "boro_name"])
+        if borough_col and bgrp_borough_col:
+            borough_totals = (
+                df.assign(_borough=df[borough_col].astype(str).str.strip().str.upper())
+                .groupby("_borough", as_index=False)
+                .agg(total=("street_activity_value", "sum"))
+            )
+            borough_blocks = (
+                bgrps[["bgrp_id", bgrp_borough_col]]
+                .drop_duplicates()
+                .assign(_borough=lambda d: d[bgrp_borough_col].astype(str).str.strip().str.upper())
+            )
+            block_counts = borough_blocks.groupby("_borough", as_index=False).size().rename(columns={"size": "n_blocks"})
+            static = borough_blocks.merge(borough_totals, on="_borough", how="left").merge(block_counts, on="_borough", how="left")
+            static["street_activity"] = static["total"].fillna(0.0) / static["n_blocks"].clip(lower=1)
+            static = static[["bgrp_id", "street_activity"]]
+            allocation_method = "borough"
+        else:
+            static = bgrps[["bgrp_id"]].drop_duplicates().copy()
+            static["street_activity"] = df["street_activity_value"].sum() / max(len(static), 1)
+
+    LOGGER.info("Street activity allocation method: %s", allocation_method)
 
     week_df = pd.DataFrame({"week_start": weeks})
     return static.assign(key=1).merge(week_df.assign(key=1), on="key", how="inner").drop(columns="key")
@@ -150,7 +249,28 @@ def _load_permits(path: str, bgrps: gpd.GeoDataFrame) -> pd.DataFrame:
         return pd.DataFrame(columns=["bgrp_id", "week_start", "dob_permits"])
 
     df = pd.read_csv(path, low_memory=False)
-    df["week_start"] = _parse_week(df, ["issuedate", "issue_date", "filing_date", "date", "jobstartdate"], "DOB permits")
+    if "LAST_EDITED_DATE" in df.columns:
+        df["week_start"] = _to_monday_week(
+            pd.to_datetime(df["LAST_EDITED_DATE"], format="%Y %b %d %I:%M:%S %p", errors="coerce")
+        )
+    else:
+        df["week_start"] = _parse_week(
+            df,
+            ["LAST_EDITED_DATE", "last_edited_date", "issuedate", "issue_date", "filing_date", "date", "jobstartdate"],
+            "DOB permits",
+        )
+
+    wkt_col = find_column(df.columns, ["the_geom", "geometry", "wkt"])
+    if wkt_col:
+        work = df.dropna(subset=["week_start"]).copy()
+        geom = gpd.GeoSeries(work[wkt_col].map(lambda value: wkt.loads(value) if pd.notna(value) else None), crs="EPSG:4326")
+        permits_gdf = gpd.GeoDataFrame(work, geometry=geom, crs="EPSG:4326").dropna(subset=["geometry"]).to_crs(epsg=TARGET_EPSG)
+        permits_gdf = permits_gdf.set_crs(epsg=TARGET_EPSG, allow_override=True)
+        if not permits_gdf.empty:
+            joined = gpd.sjoin(permits_gdf, bgrps[["bgrp_id", "geometry"]], how="inner", predicate="within")
+            if not joined.empty:
+                LOGGER.info("DOB permits spatial join succeeded")
+                return joined.groupby(["bgrp_id", "week_start"], as_index=False).size().rename(columns={"size": "dob_permits"})
 
     bgrp_col = find_column(df.columns, ["bgrp_id", "bgrp", "geoid", "borocb2020"])
     if bgrp_col:
@@ -189,7 +309,8 @@ def compute_dynamic_features(config_path: str) -> None:
     permits_path = cfg.get("building_csv", DEFAULT_PERMITS_PATH)
 
     bgrps = _load_blocks_with_bgrp(blocks_path)
-    bgrps = bgrps[[c for c in ["block_id", "bgrp_id", "geometry"] if c in bgrps.columns]]
+    bgrps = bgrps[[c for c in ["block_id", "bgrp_id", "Borough", "borough", "geometry"] if c in bgrps.columns]]
+    bgrps = bgrps.set_crs(epsg=TARGET_EPSG, allow_override=True)
 
     traffic = _load_traffic(traffic_path, bgrps)
     permits = _load_permits(permits_path, bgrps)
