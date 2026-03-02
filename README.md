@@ -1,7 +1,5 @@
 # Project_Urban_Noise (SYSEN 5900)
 
-## 中文说明（给组员与组长）
-
 
 ### 0) 本次文档更新范围
 - 本次协作按要求仅更新 `README.md`，不改动 `src/`、`config.example.yaml`、`requirements.txt` 与任何数据文件。
