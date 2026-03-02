@@ -1,4 +1,5 @@
 # ===== raw data (DO NOT COMMIT) =====
+.idea/
 data/raw/
 data
 *.gdb/
