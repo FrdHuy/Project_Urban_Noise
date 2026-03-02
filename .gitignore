@@ -5,6 +5,8 @@ data/raw/
 *.csv
 *.parquet
 *.tif
+data/
+.idea/
 
 # If you still keep old folders locally
 footprint/
