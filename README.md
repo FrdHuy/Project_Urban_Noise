@@ -97,6 +97,8 @@ python -m src.plot_heatmaps --config config.yaml
 - 新增脚本：
   - `python -m src.compute_dynamic_features --config config.yaml` → `data/processed/exposure_weekly.csv`
   - `python -m src.build_nsi_input --config config.yaml` → `data/processed/nsi_input_weekly.csv`
+  - `python -m src.build_monthly_dynamic_features --config config.yaml` → `data/processed/monthly_dynamic_with_activity.csv` + `data/processed/monthly_dynamic.parquet`
+  - `python -m src.build_model_inputs --config config.yaml` → `data/processed/scaler.pkl` + `data/processed/model_inputs_monthly.csv` + `data/processed/model_inputs_monthly_tensors.npz`
 - 动态特征按 `bgrp_id × week_start`（周一）对齐，缺失 exposure 在 merge 后填 0，并校验键唯一性。
 - 本周不改动上周 block-level 产线逻辑，仅新增动态对齐模块。
 
