@@ -1,24 +1,44 @@
-# ===== raw data (DO NOT COMMIT) =====
-.idea/
-data/raw/
-data
+# ===== Raw data (never commit) =====
+data/
+footprint/
+nyc_mappluto_25v4_unclipped_fgdb/
+*.gdb
 *.gdb/
-*.zip
 *.csv
 *.parquet
 *.tif
+*.zip
+*.pkl
+*.npz
+*.geojson
 
-# If you still keep old folders locally
-footprint/
-noise_complaint_data/
-nyc_mappluto_25v4_unclipped_fgdb/
+# Data files inside noise_complaint_data (keep *.py)
+noise_complaint_data/*.csv
+noise_complaint_data/*.zip
+noise_complaint_data/*.png
+noise_complaint_data/nyc_311_noise*/
+noise_complaint_data/descriptor_pies_by_year/
 
-# ===== python/jupyter =====
+# ===== Generated outputs =====
+figures/
+*.png
+*.pdf
+
+# ===== Local config (paths are machine-specific) =====
+config.yaml
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.iml
+
+# ===== Python =====
 __pycache__/
 .ipynb_checkpoints/
 .venv/
 .env
+*.pyc
 
-# ===== system =====
+# ===== System =====
 .DS_Store
 Thumbs.db
