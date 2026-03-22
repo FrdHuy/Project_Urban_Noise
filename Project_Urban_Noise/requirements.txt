@@ -6,5 +6,8 @@ fiona
 shapely
 pyproj
 pyyaml
+scipy
+statsmodels
+pyarrow
 
 mapclassify
